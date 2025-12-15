@@ -111,7 +111,7 @@ FlatArrayKlass* FlatArrayKlass::allocate_klass(Klass* eklass, ArrayProperties pr
     super_klass = element_klass->array_klass(CHECK_NULL);
   }
 
-  Symbol* name = ArrayKlass::create_element_klass_array_name(element_klass, CHECK_NULL);
+  Symbol* name = ObjArrayKlass::create_element_klass_array_name(element_klass, CHECK_NULL);
   ClassLoaderData* loader_data = element_klass->class_loader_data();
   int size = ArrayKlass::static_size(FlatArrayKlass::header_size());
   FlatArrayKlass* vak = new (loader_data, size, THREAD) FlatArrayKlass(element_klass, name, props, lk);

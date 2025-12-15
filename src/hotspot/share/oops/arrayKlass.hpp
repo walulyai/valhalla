@@ -68,8 +68,6 @@ class ArrayKlass: public Klass {
   ArrayKlass(Symbol* name, KlassKind kind, ArrayProperties props, markWord prototype_header = markWord::prototype());
   ArrayKlass();
 
-  // Create array_name for element klass
-  static Symbol* create_element_klass_array_name(Klass* element_klass, TRAPS);
 
  public:
 

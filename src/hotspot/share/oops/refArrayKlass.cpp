@@ -73,7 +73,7 @@ RefArrayKlass* RefArrayKlass::allocate_refArray_klass(ClassLoaderData* loader_da
   }
 
   // Create type name for klass.
-  Symbol* name = ArrayKlass::create_element_klass_array_name(element_klass, CHECK_NULL);
+  Symbol* name = ObjArrayKlass::create_element_klass_array_name(element_klass, CHECK_NULL);
 
   // Initialize instance variables
   RefArrayKlass* oak = RefArrayKlass::allocate_klass(loader_data, n, element_klass,

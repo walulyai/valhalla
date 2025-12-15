@@ -26,7 +26,6 @@
 #include "cds/cdsConfig.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/moduleEntry.hpp"
-#include "classfile/symbolTable.hpp"
 #include "classfile/vmClasses.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
@@ -38,10 +37,8 @@
 #include "oops/arrayOop.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/klass.inline.hpp"
-#include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.hpp"
 #include "oops/oop.inline.hpp"
-#include "oops/refArrayKlass.hpp"
 #include "runtime/handles.inline.hpp"
 
 ArrayKlass::ArrayKlass() {
@@ -108,25 +105,6 @@ Klass(kind, prototype_header),
   log_array_class_load(this);
 }
 
-Symbol* ArrayKlass::create_element_klass_array_name(Klass* element_klass, TRAPS) {
-  ResourceMark rm(THREAD);
-  Symbol* name = nullptr;
-  char *name_str = element_klass->name()->as_C_string();
-  int len = element_klass->name()->utf8_length();
-  char *new_str = NEW_RESOURCE_ARRAY(char, len + 4);
-  int idx = 0;
-  new_str[idx++] = JVM_SIGNATURE_ARRAY;
-  if (element_klass->is_instance_klass()) { // it could be an array or simple type
-    new_str[idx++] = JVM_SIGNATURE_CLASS;
-  }
-  memcpy(&new_str[idx], name_str, len * sizeof(char));
-  idx += len;
-  if (element_klass->is_instance_klass()) {
-    new_str[idx++] = JVM_SIGNATURE_ENDCLASS;
-  }
-  new_str[idx++] = '\0';
-  return SymbolTable::new_symbol(new_str);
-}
 
 // Initialization of vtables and mirror object is done separately from base_create_array_klass,
 // since a GC can happen. At this point all instance variables of the ArrayKlass must be setup.
