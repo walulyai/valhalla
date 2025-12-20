@@ -89,7 +89,13 @@ inline void G1FullGCMarker::push_objarray(oop obj, size_t index) {
 
 inline void G1FullGCMarker::follow_array(objArrayOop array) {
   mark_closure()->do_klass(array->klass());
+
+  if (array->is_flatArray()) {
+    mark_closure()->do_klass(FlatArrayKlass::cast(array->klass())->element_klass());
+  }
+
   // Don't push empty arrays to avoid unnecessary work.
+  // TODO: check that if it is a flat array it contains oops
   if (array->length() > 0) {
     push_objarray(array, 0);
   }
@@ -107,13 +113,26 @@ void G1FullGCMarker::follow_array_chunk(objArrayOop array, int index) {
   if (end_index < len) {
     push_objarray(array, end_index);
   }
-  assert(array->is_refArray(), "Must be");
-  refArrayOop(array)->oop_iterate_range(mark_closure(), beg_index, end_index);
+  // TODO: handle flat arrays also
+  assert(array->is_objArray(), "Must be");
+  if (array->is_refArray()) {
+    refArrayOop(array)->oop_iterate_range(mark_closure(), beg_index, end_index);
+  } else {
+    assert(array->is_flatArray(), "Must be");
+    flatArrayOop(array)->oop_iterate_range(mark_closure(), beg_index, end_index);
+  }
 }
 
 inline void G1FullGCMarker::follow_object(oop obj) {
   assert(_bitmap->is_marked(obj), "should be marked");
-  if (obj->is_refArray()) {
+  // if (obj->is_refArray()) {
+  if (obj->is_refArray() || (obj->is_flatArray() && FlatArrayKlass::cast(obj->klass())->contains_oops())) {
+    if (obj->is_flatArray()) {
+      FlatArrayKlass* faklass = FlatArrayKlass::cast(obj->klass());
+      flatArrayOop a = flatArrayOop(obj);
+      int length = a->length();
+      log_debug(gc) ("Object is a flat array. Does it contain references %s length %d %s", BOOL_TO_STR(faklass->contains_oops()), length, faklass->external_name());
+    }
     // Handle object arrays explicitly to allow them to
     // be split into chunks if needed.
     follow_array((objArrayOop)obj);
