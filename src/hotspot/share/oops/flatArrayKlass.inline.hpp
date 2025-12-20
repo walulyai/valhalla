@@ -47,16 +47,7 @@ void FlatArrayKlass::oop_oop_iterate_elements_specialized(flatArrayOop a,
                                                           OopClosureType* closure) {
   assert(contains_oops(), "Nothing to iterate");
 
-  const int shift = Klass::layout_helper_log2_element_size(layout_helper());
-  const int addr_incr = 1 << shift;
-  uintptr_t elem_addr = (uintptr_t) a->base();
-  const uintptr_t stop_addr = elem_addr + ((uintptr_t)a->length() << shift);
-  const int oop_offset = element_klass()->payload_offset();
-
-  while (elem_addr < stop_addr) {
-    element_klass()->oop_iterate_specialized<T>((address)(elem_addr - oop_offset), closure);
-    elem_addr += addr_incr;
-  }
+  oop_oop_iterate_elements_range<T>(a, closure, 0, a->length());
 }
 
 template <typename T, class OopClosureType>
@@ -134,31 +125,30 @@ void FlatArrayKlass::oop_oop_iterate_bounded(oop obj, OopClosureType* closure, M
 // Like oop_oop_iterate but only iterates over a specified range and only used
 // for objArrayOops.
 template <typename T, class OopClosureType>
-void FlatArrayKlass::oop_oop_iterate_range(flatArrayOop a,
-                                          OopClosureType *closure, int start,
-                                          int end) {
+void FlatArrayKlass::oop_oop_iterate_elements_range(flatArrayOop a,
+                                                    OopClosureType *closure,
+                                                    int start,
+                                                    int end) {
   assert(contains_oops(), "Nothing to iterate");
+  assert(start <=  end, "Invalid range [%d - %d)", start, end);
+  assert(end <= a->length(), "Invalid range [%d - %d) for a.length is %d", start, end, a->length());
 
   const int shift = Klass::layout_helper_log2_element_size(layout_helper());
   const int addr_incr = 1 << shift;
   const uintptr_t array_base = (uintptr_t) a->base();
   const uintptr_t start_addr = array_base + ((uintptr_t)start << shift);
 
-  uintptr_t elem_addr = start_addr;
   const uintptr_t stop_addr = array_base + ((uintptr_t)end << shift);
-
-  const uintptr_t end_addr = array_base + ((uintptr_t)a->length() << shift);
-  assert(elem_addr <=  stop_addr, " Invalid addresses for range [%d - %d)", start, end);
-  assert(stop_addr <=  end_addr, " Stop address is invalid for range [%d - %d)", start, end);
+  // TODO: maybe just use oop_oop_iterate_elements_specialized_bounded
+  // oop_oop_iterate_elements_specialized_bounded<T>(a, closure, (void*)elem_addr, (void*)stop_addr);
 
   const int oop_offset = element_klass()->payload_offset();
 
+  uintptr_t elem_addr = start_addr;
   while (elem_addr < stop_addr) {
     element_klass()->oop_iterate_specialized<T>((address)(elem_addr - oop_offset), closure);
     elem_addr += addr_incr;
   }
-
-  // oop_oop_iterate_elements_specialized_bounded<T>(a, closure, (void*)elem_addr, (void*)stop_addr);
 }
 
 // Placed here to resolve include cycle between objArrayKlass.inline.hpp and
@@ -166,10 +156,11 @@ void FlatArrayKlass::oop_oop_iterate_range(flatArrayOop a,
 template <typename OopClosureType>
 void flatArrayOopDesc::oop_iterate_range(OopClosureType *blk, int start,
                                         int end) {
+  FlatArrayKlass* faKlass = FlatArrayKlass::cast(klass());
   if (UseCompressedOops) {
-    ((FlatArrayKlass *)klass())->oop_oop_iterate_range<narrowOop>(this, blk, start, end);
+    faKlass->oop_oop_iterate_elements_range<narrowOop>(this, blk, start, end);
   } else {
-    ((FlatArrayKlass *)klass())->oop_oop_iterate_range<oop>(this, blk, start, end);
+    faKlass->oop_oop_iterate_elements_range<oop>(this, blk, start, end);
   }
 }
 
