@@ -43,18 +43,10 @@
  */
 
 template <typename T, class OopClosureType>
-void FlatArrayKlass::oop_oop_iterate_elements_specialized(flatArrayOop a,
-                                                          OopClosureType* closure) {
-  assert(contains_oops(), "Nothing to iterate");
-
-  oop_oop_iterate_elements_range<T>(a, closure, 0, a->length());
-}
-
-template <typename T, class OopClosureType>
 void FlatArrayKlass::oop_oop_iterate_elements_specialized_bounded(flatArrayOop a,
                                                                   OopClosureType* closure,
                                                                   void* lo, void* hi) {
-  assert(contains_oops(), "Nothing to iterate");
+  precond(contains_oops());
 
   const int shift = Klass::layout_helper_log2_element_size(layout_helper());
   const int addr_incr = 1 << shift;
@@ -81,7 +73,7 @@ void FlatArrayKlass::oop_oop_iterate_elements_specialized_bounded(flatArrayOop a
 template <typename T, class OopClosureType>
 void FlatArrayKlass::oop_oop_iterate_elements(flatArrayOop a, OopClosureType* closure) {
   if (contains_oops()) {
-    oop_oop_iterate_elements_specialized<T>(a, closure);
+    oop_oop_iterate_elements_bounded<T>(a, closure, 0, a->length());
   }
 }
 
@@ -122,16 +114,12 @@ void FlatArrayKlass::oop_oop_iterate_bounded(oop obj, OopClosureType* closure, M
   oop_oop_iterate_elements_bounded<T>(a, closure, mr);
 }
 
-// Like oop_oop_iterate but only iterates over a specified range and only used
-// for objArrayOops.
+// Like oop_oop_iterate but only iterates over the specified range [start, end)
 template <typename T, class OopClosureType>
-void FlatArrayKlass::oop_oop_iterate_elements_range(flatArrayOop a,
-                                                    OopClosureType *closure,
-                                                    int start,
-                                                    int end) {
-  assert(contains_oops(), "Nothing to iterate");
+void FlatArrayKlass::oop_oop_iterate_elements_bounded(flatArrayOop a, OopClosureType *closure, int start, int end) {
+  precond(contains_oops());
   assert(start <=  end, "Invalid range [%d - %d)", start, end);
-  assert(end <= a->length(), "Invalid range [%d - %d) for a.length is %d", start, end, a->length());
+  assert(end <= a->length(), "Invalid range [%d - %d) for a.length: %d", start, end, a->length());
 
   const int shift = Klass::layout_helper_log2_element_size(layout_helper());
   const int addr_incr = 1 << shift;
@@ -139,28 +127,18 @@ void FlatArrayKlass::oop_oop_iterate_elements_range(flatArrayOop a,
   const uintptr_t start_addr = array_base + ((uintptr_t)start << shift);
 
   const uintptr_t stop_addr = array_base + ((uintptr_t)end << shift);
-  // TODO: maybe just use oop_oop_iterate_elements_specialized_bounded
-  // oop_oop_iterate_elements_specialized_bounded<T>(a, closure, (void*)elem_addr, (void*)stop_addr);
 
-  const int oop_offset = element_klass()->payload_offset();
-
-  uintptr_t elem_addr = start_addr;
-  while (elem_addr < stop_addr) {
-    element_klass()->oop_iterate_specialized<T>((address)(elem_addr - oop_offset), closure);
-    elem_addr += addr_incr;
-  }
+  oop_oop_iterate_elements_specialized_bounded<T>(a, closure, (void*)start_addr, (void*)stop_addr);
 }
 
-// Placed here to resolve include cycle between objArrayKlass.inline.hpp and
-// objArrayOop.inline.hpp
+// Placed here to resolve include cycle between flatArrayKlass.inline.hpp and flatArrayOop.inline.hpp
 template <typename OopClosureType>
-void flatArrayOopDesc::oop_iterate_range(OopClosureType *blk, int start,
-                                        int end) {
+void flatArrayOopDesc::oop_iterate_range(OopClosureType *blk, int start, int end) {
   FlatArrayKlass* faKlass = FlatArrayKlass::cast(klass());
   if (UseCompressedOops) {
-    faKlass->oop_oop_iterate_elements_range<narrowOop>(this, blk, start, end);
+    faKlass->oop_oop_iterate_elements_bounded<narrowOop>(this, blk, start, end);
   } else {
-    faKlass->oop_oop_iterate_elements_range<oop>(this, blk, start, end);
+    faKlass->oop_oop_iterate_elements_bounded<oop>(this, blk, start, end);
   }
 }
 

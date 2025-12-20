@@ -123,14 +123,12 @@ class FlatArrayKlass : public ObjArrayKlass {
 
   // Iterate over oop elements within [start, end)
   template <typename T, class OopClosureType>
-  void oop_oop_iterate_elements_range(flatArrayOop a, OopClosureType *closure, int start, int end);
+  void oop_oop_iterate_elements_bounded(flatArrayOop a, OopClosureType *closure, int start, int end);
 
   template <typename T, class OopClosureType>
   inline void oop_oop_iterate_elements(flatArrayOop a, OopClosureType* closure);
 
 private:
-  template <typename T, class OopClosureType>
-  inline void oop_oop_iterate_elements_specialized(flatArrayOop a, OopClosureType* closure);
 
   template <typename T, class OopClosureType>
   inline void oop_oop_iterate_elements_bounded(flatArrayOop a, OopClosureType* closure, MemRegion mr);
