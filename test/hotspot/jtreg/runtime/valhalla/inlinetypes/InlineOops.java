@@ -41,6 +41,21 @@ import runtime.valhalla.inlinetypes.InlineOops.FooValue;
 import test.java.lang.invoke.lib.InstructionHelper;
 import static test.java.lang.invoke.lib.InstructionHelper.classDesc;
 
+/**
+ * @test id=Serial
+ * @requires vm.gc.Serial
+ * @summary Test embedding oops into Inline types
+ * @modules java.base/jdk.internal.value
+ *          java.base/jdk.internal.vm.annotation
+ * @library /test/lib /test/jdk/java/lang/invoke/common
+ * @enablePreview
+ * @requires vm.flagless
+ * @compile Person.java InlineOops.java
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
+ * @run main/othervm -XX:+UseSerialGC -Xmx128m -XX:+UseFieldFlattening
+ *                   -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
+ *                   runtime.valhalla.inlinetypes.InlineOops
+ */
 
 /**
  * @test id=G1
@@ -53,11 +68,60 @@ import static test.java.lang.invoke.lib.InstructionHelper.classDesc;
  * @requires vm.flagless
  * @compile Person.java InlineOops.java
  * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
- * @run main/othervm -XX:+UseG1GC -Xmx128m -XX:+UseFieldFlattening -Xlog:gc=debug,gc+heap,gc+init=debug,gc+phases=debug:/home/opc/oracle/oragit/valhalla/preview.log::filecount=0
+ * @run main/othervm -XX:+UseG1GC -Xmx128m -XX:+UseFieldFlattening
  *                   -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
  *                   runtime.valhalla.inlinetypes.InlineOops 20
  */
 
+/**
+ * @test id=Parallel
+ * @requires vm.gc.Parallel
+ * @summary Test embedding oops into Inline types
+ * @modules java.base/jdk.internal.value
+ *          java.base/jdk.internal.vm.annotation
+ * @library /test/lib /test/jdk/java/lang/invoke/common
+ * @enablePreview
+ * @requires vm.flagless
+ * @compile Person.java InlineOops.java
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
+ * @run main/othervm -XX:+UseParallelGC -Xmx128m -XX:+UseFieldFlattening
+ *                   -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
+ *                   runtime.valhalla.inlinetypes.InlineOops
+ */
+
+/**
+ * @test id=Z
+ * @requires vm.gc.Z
+ * @summary Test embedding oops into Inline types
+ * @modules java.base/jdk.internal.value
+ *          java.base/jdk.internal.vm.annotation
+ * @library /test/lib /test/jdk/java/lang/invoke/common
+ * @enablePreview
+ * @requires vm.flagless
+ * @compile Person.java InlineOops.java
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -Xmx128m
+ *                   -XX:+UnlockDiagnosticVMOptions -XX:+UseFieldFlattening
+ *                   -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
+ *                   runtime.valhalla.inlinetypes.InlineOops
+ */
+
+/**
+ * @test id=ZXint
+ * @requires vm.gc.Z
+ * @summary Test embedding oops into Inline types (sanity check with interpreter only the most complex GC)
+ * @modules java.base/jdk.internal.value
+ *          java.base/jdk.internal.vm.annotation
+ * @library /test/lib /test/jdk/java/lang/invoke/common
+ * @enablePreview
+ * @requires vm.flagless
+ * @compile Person.java InlineOops.java
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
+ * @run main/othervm -Xint -XX:+UnlockExperimentalVMOptions -XX:+UseZGC -Xmx128m
+ *                   -XX:+UnlockDiagnosticVMOptions -XX:+UseFieldFlattening
+ *                   -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
+ *                   runtime.valhalla.inlinetypes.InlineOops
+ */
 public class InlineOops {
 
     // Extra debug: -XX:+VerifyOops -XX:+VerifyStack -XX:+VerifyLastFrame -XX:+VerifyBeforeGC -XX:+VerifyAfterGC -XX:+VerifyDuringGC -XX:VerifySubSet=threads,heap
