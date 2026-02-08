@@ -237,10 +237,9 @@ void G1ParScanThreadState::do_partial_array(PartialArrayState* state, bool stole
   G1HeapRegionAttr dest_attr = _g1h->region_attr(to_array);
   G1SkipCardMarkSetter x(&_scanner, dest_attr.is_new_survivor());
   // Process claimed task.
-  assert(to_array->is_refArray(), "Must be");
-  refArrayOop(to_array)->oop_iterate_elements_range(&_scanner,
-                                                    checked_cast<int>(claim._start),
-                                                    checked_cast<int>(claim._end));
+  to_array->oop_iterate_elements_range(&_scanner,
+                                       checked_cast<int>(claim._start),
+                                       checked_cast<int>(claim._end));
 }
 
 static bool is_oop_containing_flat_array(objArrayOop obj) {
@@ -271,7 +270,9 @@ void G1ParScanThreadState::start_partial_objarray(oop from_obj,
   // Process the initial chunk.  No need to process the type in the
   // klass, as it will already be handled by processing the built-in
   // module.
+  assert(to_obj->klass() == to_array->klass(), "Ghosts");
   assert(to_array->is_refArray() || is_oop_containing_flat_array(to_array), "Must be");
+  // log_error(gc) ("start_partial_objarray to_array->is_refArray : %d", to_array->is_refArray());
   to_array->oop_iterate_elements_range(&_scanner, 0, checked_cast<int>(initial_chunk_size));
 }
 
