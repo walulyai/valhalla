@@ -39,6 +39,8 @@
 #include "oops/instanceStackChunkKlass.inline.hpp"
 #include "oops/klass.hpp"
 #include "oops/objArrayKlass.inline.hpp"
+#include "oops/oopsHierarchy.hpp"
+#include "oops/flatArrayKlass.inline.hpp"
 #include "oops/refArrayKlass.inline.hpp"
 #include "oops/typeArrayKlass.inline.hpp"
 #include "utilities/debug.hpp"
@@ -299,6 +301,65 @@ public:
 template <typename OopClosureType>
 typename OopOopIterateBackwardsDispatch<OopClosureType>::Table OopOopIterateBackwardsDispatch<OopClosureType>::_table;
 
+template <typename OopClosureType>
+class OopOopIterateElementsRangeDispatch {
+private:
+  typedef void (*FunctionType)(OopClosureType*, objArrayOop, ObjArrayKlass*, int, int);
+
+  static const uint ARRAY_KLASS_WITH_OOPS_COUNT = 2;
+
+  class Table {
+  private:
+    template <typename KlassType, typename OopType, typename T>
+    static void oop_oop_iterate_elements_range(OopClosureType* cl, objArrayOop obj, ObjArrayKlass* k, int start, int end) {
+      ((KlassType*)k)->KlassType::template oop_oop_iterate_elements_range<T>(OopType(obj), cl, start, end);
+    }
+
+    template <typename KlassType, typename OopType>
+    static void init(OopClosureType* cl, objArrayOop obj, ObjArrayKlass* k, int start, int end) {
+      OopOopIterateElementsRangeDispatch<OopClosureType>::_table.set_resolve_function_and_execute<KlassType, OopType>(cl, obj, k, start, end);
+    }
+
+    template <typename KlassType, typename OopType>
+    void set_init_function() {
+      _function[KlassType::Kind] = &init<KlassType, OopType>;
+    }
+
+    template <typename KlassType, typename OopType>
+    void set_resolve_function() {
+      if (UseCompressedOops) {
+        _function[KlassType::Kind] = &oop_oop_iterate_elements_range<KlassType, OopType, narrowOop>;
+      } else {
+        _function[KlassType::Kind] = &oop_oop_iterate_elements_range<KlassType, OopType, oop>;
+      }
+    }
+
+    template <typename KlassType, typename OopType>
+    void set_resolve_function_and_execute(OopClosureType* cl, objArrayOop obj, ObjArrayKlass* k, int start, int end) {
+      set_resolve_function<KlassType, OopType>();
+      _function[KlassType::Kind](cl, obj, k, start, end);
+    }
+
+  public:
+    FunctionType _function[ARRAY_KLASS_WITH_OOPS_COUNT];
+
+    Table(){
+      set_init_function<FlatArrayKlass, flatArrayOop>();
+      set_init_function<RefArrayKlass, refArrayOop>();
+    }
+  };
+
+  static Table _table;
+public:
+
+  static FunctionType function(Klass* klass) {
+    return _table._function[klass->kind()];
+  }
+};
+
+template <typename OopClosureType>
+typename OopOopIterateElementsRangeDispatch<OopClosureType>::Table OopOopIterateElementsRangeDispatch<OopClosureType>::_table;
+
 
 template <typename OopClosureType>
 void OopIteratorClosureDispatch::oop_oop_iterate(OopClosureType* cl, oop obj, Klass* klass) {
@@ -313,6 +374,12 @@ void OopIteratorClosureDispatch::oop_oop_iterate(OopClosureType* cl, oop obj, Kl
 template <typename OopClosureType>
 void OopIteratorClosureDispatch::oop_oop_iterate_backwards(OopClosureType* cl, oop obj, Klass* klass) {
   OopOopIterateBackwardsDispatch<OopClosureType>::function(klass)(cl, obj, klass);
+}
+
+template <typename OopClosureType>
+void OopIteratorClosureDispatch::oop_oop_elements_iterate_range(OopClosureType* cl, objArrayOop obj,
+                                                                ObjArrayKlass* klass, int start, int end) {
+  OopOopIterateElementsRangeDispatch<OopClosureType>::function(klass)(cl, obj, klass, start, end);
 }
 
 #endif // SHARE_MEMORY_ITERATOR_INLINE_HPP

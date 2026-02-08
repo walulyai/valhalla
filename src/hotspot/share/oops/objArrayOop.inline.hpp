@@ -85,7 +85,7 @@ inline void objArrayOopDesc::obj_at_put(int index, oop value, TRAPS) {
 
 template <typename OopClosureType>
 void objArrayOopDesc::oop_iterate_elements_range(OopClosureType* blk, int start, int end) {
-  ShouldNotReachHere();
+  OopIteratorClosureDispatch::oop_oop_elements_iterate_range(blk, this, ObjArrayKlass::cast(klass()), start, end);
 }
 
 #endif // SHARE_OOPS_OBJARRAYOOP_INLINE_HPP

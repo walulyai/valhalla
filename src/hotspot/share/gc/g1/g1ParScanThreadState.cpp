@@ -243,25 +243,36 @@ void G1ParScanThreadState::do_partial_array(PartialArrayState* state, bool stole
                                                     checked_cast<int>(claim._end));
 }
 
+static bool is_oop_containing_flat_array(objArrayOop obj) {
+  return obj->is_flatArray() &&
+         FlatArrayKlass::cast(FlatArrayKlass::cast(obj->klass()))->contains_oops();
+}
+
 MAYBE_INLINE_EVACUATION
 void G1ParScanThreadState::start_partial_objarray(oop from_obj,
                                                   oop to_obj) {
   assert(from_obj->is_forwarded(), "precondition");
   assert(from_obj->forwardee() == to_obj, "precondition");
   assert(to_obj->is_objArray(), "precondition");
+  assert(!_scanner.do_metadata(), "precondition");
+  assert(_scanner.skip_card_mark_set(), "precondition");
 
   objArrayOop to_array = objArrayOop(to_obj);
+  // TODO: add comment
+  if (to_array->is_flatArray() && !is_oop_containing_flat_array(to_array)) {
+    return;
+  }
+
   size_t array_length = to_array->length();
   size_t initial_chunk_size =
     // The source array is unused when processing states.
     _partial_array_splitter.start(_task_queue, nullptr, to_array, array_length);
 
-  assert(_scanner.skip_card_mark_set(), "must be");
   // Process the initial chunk.  No need to process the type in the
   // klass, as it will already be handled by processing the built-in
   // module.
-  assert(to_array->is_refArray(), "Must be");
-  refArrayOop(to_array)->oop_iterate_elements_range(&_scanner, 0, checked_cast<int>(initial_chunk_size));
+  assert(to_array->is_refArray() || is_oop_containing_flat_array(to_array), "Must be");
+  to_array->oop_iterate_elements_range(&_scanner, 0, checked_cast<int>(initial_chunk_size));
 }
 
 MAYBE_INLINE_EVACUATION
@@ -432,16 +443,16 @@ void G1ParScanThreadState::do_iterate_object(oop const obj,
                                              uint age) {
     // Most objects are not arrays, so do one array check rather than
     // checking for each array category for each object.
-    if (klass->is_array_klass() && !klass->is_flatArray_klass()) {
+    if (klass->is_array_klass()) {
       assert(!klass->is_stack_chunk_instance_klass(), "must be");
 
-      if (klass->is_refArray_klass()) {
+      if (klass->is_objArray_klass()) {
         start_partial_objarray(old, obj);
       } else {
         // Nothing needs to be done for typeArrays.  Body doesn't contain
         // any oops to scan, and the type in the klass will already be handled
         // by processing the built-in module.
-        assert(klass->is_typeArray_klass() || klass->is_objArray_klass(), "invariant");
+        assert(klass->is_typeArray_klass(), "invariant");
       }
       return;
     }

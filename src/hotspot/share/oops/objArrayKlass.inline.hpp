@@ -52,6 +52,11 @@ void ObjArrayKlass::oop_oop_iterate_elements(objArrayOop a, OopClosureType* clos
 }
 
 template <typename T, class OopClosureType>
+void ObjArrayKlass::oop_oop_iterate_elements_range(objArrayOop a, OopClosureType* closure, int start, int end) {
+  ShouldNotReachHere();
+}
+
+template <typename T, class OopClosureType>
 void ObjArrayKlass::oop_oop_iterate_elements_bounded(
     objArrayOop a, OopClosureType* closure, void* low, void* high) {
   ShouldNotReachHere();
