@@ -84,9 +84,9 @@ inline bool G1FullGCMarker::is_task_queue_empty() {
 
 inline void G1FullGCMarker::process_array_chunk(objArrayOop obj, size_t start, size_t end) {
   assert(obj->is_refArray(), "Must be");
-  obj->oop_iterate_elements_range(mark_closure(),
-                                  checked_cast<int>(start),
-                                  checked_cast<int>(end));
+  refArrayOop(obj)->oop_iterate_elements_range(mark_closure(),
+                                               checked_cast<int>(start),
+                                               checked_cast<int>(end));
 }
 
 inline void G1FullGCMarker::dispatch_task(const ScannerTask& task, bool stolen) {
