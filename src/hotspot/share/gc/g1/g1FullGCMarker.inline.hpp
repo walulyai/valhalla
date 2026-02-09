@@ -85,8 +85,8 @@ inline bool G1FullGCMarker::is_task_queue_empty() {
 inline void G1FullGCMarker::process_array_chunk(objArrayOop obj, size_t start, size_t end) {
   if (obj->is_refArray()) {
     refArrayOop(obj)->oop_iterate_elements_range(mark_closure(),
-                                                checked_cast<int>(start),
-                                                checked_cast<int>(end));
+                                                 checked_cast<int>(start),
+                                                 checked_cast<int>(end));
   } else {
     assert(obj->is_flatArray(), "Must be");
     flatArrayOop(obj)->oop_iterate_elements_range(mark_closure(),

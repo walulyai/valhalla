@@ -62,6 +62,16 @@ void G1FullGCMarker::process_partial_array(PartialArrayState* state, bool stolen
 
 void G1FullGCMarker::start_partial_array_processing(objArrayOop obj) {
   mark_closure()->do_klass(obj->klass());
+
+  if (obj->is_flatArray()) {
+    FlatArrayKlass* faklass = FlatArrayKlass::cast(obj->klass());
+    mark_closure()->do_klass(faklass->element_klass());
+
+    // TODO: leave a comment
+    if (!faklass->contains_oops()) {
+      return;
+    }
+  }
   // Don't push empty arrays to avoid unnecessary work.
   size_t array_length = obj->length();
   if (array_length > 0) {

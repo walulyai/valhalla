@@ -181,15 +181,27 @@ inline void G1CMTask::process_grey_task_entry(G1TaskQueueEntry task_entry, bool 
   check_limits();
 }
 
+static bool is_oop_containing_flat_array(oop obj) {
+  return obj->is_flatArray() &&
+         FlatArrayKlass::cast(FlatArrayKlass::cast(obj->klass()))->contains_oops();
+}
+
 inline bool G1CMTask::should_be_sliced(oop obj) {
-  return obj->is_refArray() && ((refArrayOop)obj)->length() >= (int)ObjArrayMarkingStride;
+  return (obj->is_refArray() || is_oop_containing_flat_array(obj)) &&
+         ((objArrayOop)obj)->length() >= (int)ObjArrayMarkingStride;
 }
 
 inline void G1CMTask::process_array_chunk(objArrayOop obj, size_t start, size_t end) {
-  assert(obj->is_refArray(), "Must be");
-  refArrayOop(obj)->oop_iterate_elements_range(_cm_oop_closure,
-                                               checked_cast<int>(start),
-                                               checked_cast<int>(end));
+  if (obj->is_refArray()) {
+    refArrayOop(obj)->oop_iterate_elements_range(_cm_oop_closure,
+                                                 checked_cast<int>(start),
+                                                 checked_cast<int>(end));
+  } else {
+    assert(obj->is_flatArray(), "Must be");
+    flatArrayOop(obj)->oop_iterate_elements_range(_cm_oop_closure,
+                                                  checked_cast<int>(start),
+                                                  checked_cast<int>(end));
+  }
 }
 
 inline void G1ConcurrentMark::update_top_at_mark_start(G1HeapRegion* r) {
