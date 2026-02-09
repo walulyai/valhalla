@@ -230,17 +230,9 @@ void G1ParScanThreadState::do_oop_evac(T* p) {
 
 ALWAYSINLINE
 void G1ParScanThreadState::process_array_chunk(objArrayOop obj, size_t start, size_t end) {
-  if (obj->is_refArray()) {
-    refArrayOop(obj)->oop_iterate_elements_range(&_scanner,
-                                                 checked_cast<int>(start),
-                                                 checked_cast<int>(end));
-  } else {
-    assert(obj->is_flatArray(), "Must be");
-    flatArrayOop(obj)->oop_iterate_elements_range(&_scanner,
-                                                  checked_cast<int>(start),
-                                                  checked_cast<int>(end));
-  }
-
+  obj->oop_iterate_elements_range(&_scanner,
+                                  checked_cast<int>(start),
+                                  checked_cast<int>(end));
 }
 
 MAYBE_INLINE_EVACUATION
