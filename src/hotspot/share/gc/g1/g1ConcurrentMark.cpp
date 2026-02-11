@@ -2323,6 +2323,10 @@ size_t G1CMTask::process_partial_array(const G1TaskQueueEntry& task, bool stolen
   if (obj->is_refArray()) {
     return heap_word_size((claim._end - claim._start) * heapOopSize);
   } else {
+
+    // TODO: maybe use FlatArrayKlass::element_byte_size
+    // size_t element_size = faKlass->element_byte_size();
+    // elements_size_in_bytes = nof_elements * element_size;
     size_t nof_elements = claim._end - claim._start;
     FlatArrayKlass* faKlass = FlatArrayKlass::cast(obj->klass());
     size_t element_size_in_bytes = flatArrayOopDesc::element_size(faKlass->layout_helper(), checked_cast<int>(nof_elements));
