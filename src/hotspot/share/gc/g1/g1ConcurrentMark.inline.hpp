@@ -181,26 +181,22 @@ inline void G1CMTask::process_grey_task_entry(G1TaskQueueEntry task_entry, bool 
   check_limits();
 }
 
-static inline bool obj_has_oops(oop obj) {
-  if (obj->is_typeArray()) {
+static inline bool is_array_with_oops(oop obj) {
+  if (!obj->is_objArray()) {
     return false;
   }
-  // Just assume that instanceOops without references have references too.
-  if (!obj->is_flatArray()) {
-    assert(obj->is_refArray() || obj->is_instance(), "unknown obj type");
-    return true;
-  }
 
-  precond(obj->is_flatArray());
-  return flatArrayOop(obj)->contains_oops();
+  precond(obj->is_refArray() || obj->is_flatArray());
+
+  return objArrayOop(obj)->contains_oops();
 }
 
 inline bool G1CMTask::should_be_sliced(oop obj) {
-  return obj_has_oops(obj) && ((objArrayOop)obj)->length() >= (int)ObjArrayMarkingStride;
+  return is_array_with_oops(obj) && ((objArrayOop)obj)->length() >= (int)ObjArrayMarkingStride;
 }
 
 inline void G1CMTask::process_array_chunk(objArrayOop obj, size_t start, size_t end) {
-  precond(obj_has_oops(obj));
+  precond(is_array_with_oops(obj));
   obj->oop_iterate_elements_range(_cm_oop_closure,
                                   checked_cast<int>(start),
                                   checked_cast<int>(end));

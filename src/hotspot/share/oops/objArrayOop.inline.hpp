@@ -83,6 +83,15 @@ inline void objArrayOopDesc::obj_at_put(int index, oop value, TRAPS) {
   }
 }
 
+inline bool objArrayOopDesc::contains_oops() const {
+  if (is_flatArray()) {
+    return ((const flatArrayOopDesc* )this)->contains_oops();
+  } else {
+    assert(is_refArray(), "Must be");
+    return true;
+  }
+}
+
 template <typename OopClosureType>
 void objArrayOopDesc::oop_iterate_elements_range(OopClosureType* blk, int start, int end) {
   if (is_flatArray()) {
