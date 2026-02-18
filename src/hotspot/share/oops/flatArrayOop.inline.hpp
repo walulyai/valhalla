@@ -110,4 +110,9 @@ void flatArrayOopDesc::oop_iterate_elements_range(OopClosureType* blk, int start
   }
 }
 
+inline bool flatArrayOopDesc::contains_oops() const {
+  FlatArrayKlass* faklass = FlatArrayKlass::cast(klass());
+  return faklass->contains_oops();
+}
+
 #endif // SHARE_VM_OOPS_FLATARRAYOOP_INLINE_HPP

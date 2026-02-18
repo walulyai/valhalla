@@ -2290,12 +2290,22 @@ size_t G1CMTask::start_partial_array_processing(oop obj) {
   // Mark objArray klass metadata
   if (_cm_oop_closure->do_metadata()) {
     _cm_oop_closure->do_klass(obj_array->klass());
+
+    if (obj_array->is_flatArray()) {
+      FlatArrayKlass* faklass = FlatArrayKlass::cast(obj_array->klass());
+      _cm_oop_closure->do_klass(faklass->element_klass());
+    }
   }
 
   process_array_chunk(obj_array, 0, initial_chunk_size);
 
   // Include object header size
-  return refArrayOopDesc::object_size(checked_cast<int>(initial_chunk_size));
+  if (obj_array->is_refArray()) {
+    return refArrayOopDesc::object_size(checked_cast<int>(initial_chunk_size));
+  } else {
+    FlatArrayKlass* faKlass = FlatArrayKlass::cast(obj_array->klass());
+    return flatArrayOopDesc::object_size(faKlass->layout_helper(), checked_cast<int>(initial_chunk_size));
+  }
 }
 
 size_t G1CMTask::process_partial_array(const G1TaskQueueEntry& task, bool stolen) {
@@ -2307,7 +2317,14 @@ size_t G1CMTask::process_partial_array(const G1TaskQueueEntry& task, bool stolen
     _partial_array_splitter.claim(state, _task_queue, stolen);
 
   process_array_chunk(obj, claim._start, claim._end);
-  return heap_word_size((claim._end - claim._start) * heapOopSize);
+
+  if (obj->is_refArray()) {
+    return heap_word_size((claim._end - claim._start) * heapOopSize);
+  } else {
+    size_t element_byte_size = FlatArrayKlass::cast(obj->klass())->element_byte_size();
+    size_t nof_elements = claim._end - claim._start;
+    return heap_word_size(nof_elements * element_byte_size);
+  }
 }
 
 void G1CMTask::drain_global_stack(bool partially) {
