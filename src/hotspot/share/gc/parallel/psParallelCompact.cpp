@@ -1337,15 +1337,29 @@ void PSParallelCompact::adjust_in_old_space(Atomic<uint>* claim_counter) {
 }
 
 void PSParallelCompact::adjust_in_young_space(SpaceId id, Atomic<uint>* claim_counter) {
-  adjust_in_space_helper(id, claim_counter, [](HeapWord* stripe_start, HeapWord* stripe_end) {
-    HeapWord* obj_start = stripe_start;
+  auto scan_obj_with_limit = [&] (HeapWord* obj_start, HeapWord* left, HeapWord* right) {
+    precond(mark_bitmap()->is_marked(obj_start));
+    oop obj = cast_to_oop(obj_start);
+    return obj->oop_iterate_size(&pc_adjust_pointer_closure, MemRegion(left, right));
+  };
+
+  adjust_in_space_helper(id, claim_counter, [&](HeapWord* stripe_start, HeapWord* stripe_end) {
+    assert(_summary_data.is_region_aligned(stripe_start), "inv");
+    RegionData* cur_region = _summary_data.addr_to_region_ptr(stripe_start);
+    HeapWord* obj_start;
+    if (cur_region->partial_obj_size() != 0) {
+      obj_start = cur_region->partial_obj_addr();
+      obj_start += scan_obj_with_limit(obj_start, stripe_start, stripe_end);
+    } else {
+      obj_start = stripe_start;
+    }
     while (obj_start < stripe_end) {
       obj_start = mark_bitmap()->find_obj_beg(obj_start, stripe_end);
       if (obj_start >= stripe_end) {
         break;
       }
       oop obj = cast_to_oop(obj_start);
-      obj_start += obj->oop_iterate_size(&pc_adjust_pointer_closure);
+      obj_start += scan_obj_with_limit(obj_start, stripe_start, stripe_end);
     }
   });
 }
