@@ -764,6 +764,8 @@ public:
 
   static void adjust_in_stripe(HeapWord* stripe_start, HeapWord* stripe_end);
 
+  static size_t adjust_in_obj(HeapWord* obj_start);
+
   static size_t adjust_in_obj_with_limit(HeapWord* obj_start, HeapWord* left, HeapWord* right);
 
   static void adjust_in_old_space(Atomic<uint>* claim_counter);

@@ -1304,7 +1304,17 @@ void PSParallelCompact::adjust_in_space_helper(SpaceId id, Atomic<uint>* claim_c
   }
 }
 
+size_t PSParallelCompact::adjust_in_obj(HeapWord* obj_start) {
+  precond(mark_bitmap()->is_marked(obj_start));
+  oop obj = cast_to_oop(obj_start);
+  return obj->oop_iterate_size(&pc_adjust_pointer_closure);
+}
 
+
+static bool should_split_adjust(oop obj, size_t obj_size) {
+  const size_t threshold = 4 * ParallelCompactData::RegionSize;
+  return obj->is_array_with_oops() && obj_size >= threshold;
+}
 
 size_t PSParallelCompact::adjust_in_obj_with_limit(HeapWord* obj_start, HeapWord* left, HeapWord* right) {
   precond(mark_bitmap()->is_marked(obj_start));
@@ -1316,12 +1326,17 @@ void PSParallelCompact::adjust_in_stripe(HeapWord* stripe_start, HeapWord* strip
     precond(_summary_data.is_region_aligned(stripe_start));
 
     RegionData* cur_region = _summary_data.addr_to_region_ptr(stripe_start);
-    HeapWord* obj_start;
+    HeapWord* obj_start = stripe_start;
+
     if (cur_region->partial_obj_size() != 0) {
       obj_start = cur_region->partial_obj_addr();
-      obj_start += adjust_in_obj_with_limit(obj_start, stripe_start, stripe_end);
-    } else {
-      obj_start = stripe_start;
+      oop obj = cast_to_oop(obj_start);
+      size_t obj_size = obj->size();
+
+      if (should_split_adjust(obj, obj_size)) {
+        adjust_in_obj_with_limit(obj_start, stripe_start, stripe_end);
+      }
+      obj_start += obj_size;
     }
 
     while (obj_start < stripe_end) {
@@ -1329,8 +1344,17 @@ void PSParallelCompact::adjust_in_stripe(HeapWord* stripe_start, HeapWord* strip
       if (obj_start >= stripe_end) {
         break;
       }
+
       oop obj = cast_to_oop(obj_start);
-      obj_start += adjust_in_obj_with_limit(obj_start, stripe_start, stripe_end);
+      size_t obj_size = obj->size();
+      HeapWord* obj_end = obj_start + obj_size;
+
+      if (should_split_adjust(obj, obj_size) && obj_end > stripe_end) {
+        adjust_in_obj_with_limit(obj_start, stripe_start, stripe_end);
+      } else {
+        adjust_in_obj(obj_start);
+      }
+      obj_start = obj_end;
     }
 }
 
