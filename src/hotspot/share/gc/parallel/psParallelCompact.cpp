@@ -1310,7 +1310,6 @@ size_t PSParallelCompact::adjust_in_obj(HeapWord* obj_start) {
   return obj->oop_iterate_size(&pc_adjust_pointer_closure);
 }
 
-
 static bool should_split_adjust(oop obj, size_t obj_size) {
   const size_t threshold = 4 * ParallelCompactData::RegionSize;
   return obj->is_array_with_oops() && obj_size >= threshold;
@@ -1323,39 +1322,39 @@ size_t PSParallelCompact::adjust_in_obj_with_limit(HeapWord* obj_start, HeapWord
 }
 
 void PSParallelCompact::adjust_in_stripe(HeapWord* stripe_start, HeapWord* stripe_end) {
-    precond(_summary_data.is_region_aligned(stripe_start));
+  precond(_summary_data.is_region_aligned(stripe_start));
 
-    RegionData* cur_region = _summary_data.addr_to_region_ptr(stripe_start);
-    HeapWord* obj_start = stripe_start;
+  RegionData* cur_region = _summary_data.addr_to_region_ptr(stripe_start);
+  HeapWord* obj_start = stripe_start;
 
-    if (cur_region->partial_obj_size() != 0) {
-      obj_start = cur_region->partial_obj_addr();
-      oop obj = cast_to_oop(obj_start);
-      size_t obj_size = obj->size();
+  if (cur_region->partial_obj_size() != 0) {
+    obj_start = cur_region->partial_obj_addr();
+    oop obj = cast_to_oop(obj_start);
+    size_t obj_size = obj->size();
 
-      if (should_split_adjust(obj, obj_size)) {
-        adjust_in_obj_with_limit(obj_start, stripe_start, stripe_end);
-      }
-      obj_start += obj_size;
+    if (should_split_adjust(obj, obj_size)) {
+      adjust_in_obj_with_limit(obj_start, stripe_start, stripe_end);
+    }
+    obj_start += obj_size;
+  }
+
+  while (obj_start < stripe_end) {
+    obj_start = mark_bitmap()->find_obj_beg(obj_start, stripe_end);
+    if (obj_start >= stripe_end) {
+      break;
     }
 
-    while (obj_start < stripe_end) {
-      obj_start = mark_bitmap()->find_obj_beg(obj_start, stripe_end);
-      if (obj_start >= stripe_end) {
-        break;
-      }
+    oop obj = cast_to_oop(obj_start);
+    size_t obj_size = obj->size();
+    HeapWord* obj_end = obj_start + obj_size;
 
-      oop obj = cast_to_oop(obj_start);
-      size_t obj_size = obj->size();
-      HeapWord* obj_end = obj_start + obj_size;
-
-      if (should_split_adjust(obj, obj_size) && obj_end > stripe_end) {
-        adjust_in_obj_with_limit(obj_start, stripe_start, stripe_end);
-      } else {
-        adjust_in_obj(obj_start);
-      }
-      obj_start = obj_end;
+    if (should_split_adjust(obj, obj_size) && obj_end > stripe_end) {
+      adjust_in_obj_with_limit(obj_start, stripe_start, stripe_end);
+    } else {
+      adjust_in_obj(obj_start);
     }
+    obj_start = obj_end;
+  }
 }
 
 void PSParallelCompact::adjust_in_old_space(Atomic<uint>* claim_counter) {
